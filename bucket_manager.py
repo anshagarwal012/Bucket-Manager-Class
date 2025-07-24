@@ -31,9 +31,9 @@ class BucketManager:
             print(f"Error listing files: {e}")
             return []
 
-    def upload_file(self, file_path, dest_name, public=True):
+    def upload_file(self, file_path, dest_name, public=False):
         try:
-            extra_args = {'ACL': 'public-read'} if public else {}
+            extra_args = {'ACL': 'private'}  # default is private
             self.s3.upload_file(file_path, self.space_name, dest_name, ExtraArgs=extra_args)
             return True
         except ClientError as e:
@@ -51,9 +51,20 @@ class BucketManager:
             print(f"Error deleting file: {e}")
             return False
 
-    def get_url(self, file_name):
-        return f"{self.base_url}/{file_name}"
-
+    def get_presigned_url(self, file_name, expiration=3600):
+        try:
+            url = self.s3.generate_presigned_url(
+                'get_object',
+                Params={
+                    'Bucket': self.space_name,
+                    'Key': file_name
+                },
+                ExpiresIn=expiration  # Time in seconds
+            )
+            return url
+        except ClientError as e:
+            print(f"Error generating presigned URL: {e}")
+            return None
 
 
 manager = BucketManager()
@@ -66,7 +77,7 @@ manager.upload_file(filename, filename)
 print(manager.list_files())
 
 # Get public URL
-print(manager.get_url(filename))
+print(manager.get_presigned_url(filename))
 
 # Delete
 # manager.delete_file(filename)
