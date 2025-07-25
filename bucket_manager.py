@@ -1,4 +1,5 @@
 import os
+import shutil
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -66,18 +67,36 @@ class BucketManager:
             print(f"Error generating presigned URL: {e}")
             return None
 
+    def upload_all_files_from_folder(self, folder_path, dest_folder):
+        # Get all files from the folder
+        files = os.listdir(folder_path)
+        
+        for file in files:
+            file_path = os.path.join(folder_path, file)
+            
+            if os.path.isfile(file_path):
+                # Generate the S3 destination path
+                dest_name = f"{dest_folder}/{file}"
+                
+                # Upload the file to S3
+                if self.upload_file(file_path, dest_name):
+                    print(f"Uploaded {file} to {dest_name}")
+                    
+                    # After uploading, move the file to a new folder
+                    moved_path = os.path.join(folder_path, f"uploaded_books/{file}")
+                    try:
+                        os.makedirs(os.path.join(folder_path, "uploaded_books"), exist_ok=True)
+                        shutil.move(file_path, moved_path)
+                        print(f"Moved {file} to {moved_path}")
+                    except Exception as e:
+                        print(f"Error moving file {file}: {e}")
 
+# Initialize BucketManager
 manager = BucketManager()
-filename = "character.jpg"
 
-# Upload
-manager.upload_file(filename, filename)
+# Define folder paths
+print_book_folder = "print_book"  # Folder where your files are
+uploaded_books_folder = "uploaded_books"  # Folder where you want to move uploaded files
 
-# List
-print(manager.list_files())
-
-# Get public URL
-print(manager.get_presigned_url(filename))
-
-# Delete
-# manager.delete_file(filename)
+# Upload and move files
+manager.upload_all_files_from_folder(print_book_folder, uploaded_books_folder)
